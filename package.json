@@ -6,7 +6,8 @@
     "chain": "npm run chain",
     "compile": "truffle compile",
     "migrate": "npm run deploy",
-    "publish": "lerna publish"
+    "publish": "lerna publish",
+    "export": "rsync -a build/ ../defiat-frontend/src/contracts/"
   },
   "devDependencies": {
     "lerna": "^3.4.3",
