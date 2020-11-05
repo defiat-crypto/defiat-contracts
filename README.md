@@ -1,6 +1,12 @@
 # DeFiat Smart Contracts
 
-This repo is home to the Smart Contracts that make up the DeFiat network.  
+This repo is home to the Smart Contracts that make up the DeFiat network.
+
+## Commands
+
+Flatten a solidity file => `truffle-flattener ./contracts/HelloWorld.sol > ./build/HelloWorld_Flat.sol`
+
+## Contract Addresses
 
 DeFiat Token - https://etherscan.io/token/0xB6eE603933E024d8d53dDE3faa0bf98fE2a3d6f1  
 

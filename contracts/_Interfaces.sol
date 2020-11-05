@@ -119,6 +119,7 @@ interface X_flusher {
 
 interface IDungeon {
     function myStake(address _address) external view returns(uint256);
+    function myRewards(address _address) external view returns(uint256);
 }
 
 interface I_Defiat_Points {

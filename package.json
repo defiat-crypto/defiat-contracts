@@ -12,6 +12,7 @@
   "devDependencies": {
     "lerna": "^3.4.3",
     "solc": "0.6.6",
-    "truffle": "^5.1.37"
+    "truffle": "^5.1.37",
+    "truffle-flattener": "^1.5.0"
   }
 }

@@ -35,7 +35,7 @@ contract Uni_Price_v2 is ERC20_Utils {
         uniSymbol = "UNI-V2";
     }
 
-    function isUniLiquidityToken(address _token) internal view returns (bool) {
+    function isUniLiquidityToken(address _token) public view returns (bool) {
         if (keccak256(bytes(_ERC20(_token).symbol())) == keccak256(bytes(uniSymbol))) {
             return true;
         }
