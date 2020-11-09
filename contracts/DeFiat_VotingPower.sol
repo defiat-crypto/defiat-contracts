@@ -2,6 +2,22 @@
 
 pragma solidity ^0.6.0;
 
+// DeFiat Snapshot Voting Power Contract
+// 
+// This contract calculates the amount of votes (in 1e18) a user has.
+// When using this contract with snapshot, we can fairly calculate each address's total network stake at a given block
+//
+// Voting Power Algorithm:
+// MY_VOTING_POWER = DFT_BALANCE 
+//  + (DFT_LP_BALANCE * PRICE_IN_DFT)
+//  + TOTAL_DFT_STAKED 
+//  + TOTAL_DFT_PENDING_REWARDS 
+//  + (TOTAL_DFT_LP_STAKED * PRICE_IN_DFT)
+//
+// In order to compute LP voting power, we get the current price of the DFT LP token,
+//  which is half ETH and half DFT, then convert the ETH into DFT, and add the two values
+
+
 import "./_Interfaces.sol";
 import "./SafeMath.sol";
 import "./ERC20_Utils.sol";
@@ -12,6 +28,7 @@ contract DeFiat_VotingPower is ERC20_Utils, Uni_Price_v2 {
     using SafeMath for uint256;
     
     address public defiat;
+    address public defiatLp;
     address public wethAddress;
     uint internal stackPointer; // pointer for staking pool stack
     
@@ -34,11 +51,17 @@ contract DeFiat_VotingPower is ERC20_Utils, Uni_Price_v2 {
     public {
         defiat = address(0xB6eE603933E024d8d53dDE3faa0bf98fE2a3d6f1); // MAINNET
         // defiat = address(0xB571d40e4A7087C1B73ce6a3f29EaDfCA022C5B2); // RINKEBY
+
+        defiatLp = address(0xe2A1d215d03d7E9Fa0ed66355c86678561e4940a); // MAINNET
+        // defiatLp = address(0xF7426EAcb2b00398D4cefb3E24115c91821d6fB0); // RINKEBY
     }
 
     function myVotingPower(address _address) public view returns (uint256) {
         // power initialized to DFT Balance
-        uint256 _power = _ERC20(defiat).balanceOf(_address);
+        uint256 _power;
+        uint256 dftBalance = _ERC20(defiat).balanceOf(_address);
+        uint256 dftLpBalance = _ERC20(defiatLp).balanceOf(_address);
+        uint256 dftLpPower = getLiquidityTokenPower(defiatLp, dftLpBalance);
         for (uint i = 0; i < stackPointer; i++) {
             PoolStruct memory pool = stakingPools[i];
             // get base staked tokens
@@ -57,10 +80,10 @@ contract DeFiat_VotingPower is ERC20_Utils, Uni_Price_v2 {
             }
             
 
-            _power = _power + stakedTokens + rewardTokens;
+            _power = _power.add(stakedTokens).add(rewardTokens);
         }
 
-        return _power;
+        return _power.add(dftBalance).add(dftLpPower);
     }
 
     function getLiquidityTokenPower(address tokenAddress, uint256 stakedTokens) public view returns (uint256) {
