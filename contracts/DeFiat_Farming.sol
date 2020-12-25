@@ -1,8 +1,8 @@
 pragma solidity ^0.6.0;
 
-import "./_Interfaces.sol";
-import "./SafeMath.sol";
-import "./Address.sol";
+import "./models/_Interfaces.sol";
+import "./libraries/SafeMath.sol";
+import "./libraries/Address.sol";
 
 contract DeFiat_Farming_v15 {
     using SafeMath for uint256;

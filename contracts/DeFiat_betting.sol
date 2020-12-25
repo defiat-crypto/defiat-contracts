@@ -10,9 +10,9 @@
 // File: @openzeppelin/contracts/math/SafeMath.sol
 pragma solidity ^0.6.0;
 
-import "./_Interfaces.sol";
-import "./SafeMath.sol";
-import "./Ownable.sol";
+import "./models/_Interfaces.sol";
+import "./libraries/SafeMath.sol";
+import "./libraries/Ownable.sol";
 
 
 contract RugVote is Ownable {

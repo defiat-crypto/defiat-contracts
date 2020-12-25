@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: DeFiat 2020
 
 pragma solidity ^0.6.0;
-import "./_ERC20.sol";
+import "./models/_ERC20.sol";
 import "./DeFiat_Governance.sol";
 import "./DeFiat_Points.sol";
 

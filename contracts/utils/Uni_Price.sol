@@ -2,9 +2,9 @@
 
 pragma solidity >= 0.6;
 
-import "./SafeMath.sol";
-import "./_Interfaces.sol";
-import "./_ERC20.sol";
+import "../libraries/SafeMath.sol";
+import "../models/_Interfaces.sol";
+import "../models/_ERC20.sol";
 
 contract Uni_Price {
     using SafeMath for uint112;

@@ -1,9 +1,9 @@
 pragma solidity ^0.6.0;
 
-import "./_Interfaces.sol";
-import "./_ERC20.sol";
-import "./ERC20_Utils.sol";
-import "./SafeMath.sol";
+import "../models/_Interfaces.sol";
+import "../models/_ERC20.sol";
+import "../utils/ERC20_Utils.sol";
+import "../libraries/SafeMath.sol";
 
 contract Any_Price is ERC20_Utils {
     using SafeMath for uint112;

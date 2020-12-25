@@ -1,7 +1,7 @@
 pragma solidity ^0.6.0;
 
-import "./SafeMath.sol";
-import {IERC20, IDungeon} from "./_Interfaces.sol";
+import "./libraries/SafeMath.sol";
+import {IERC20, IDungeon} from "./models/_Interfaces.sol";
 
 // File: @defiat-crypto/defiat/blob/master/contracts/XXXXXX.sol
 /**

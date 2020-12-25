@@ -2,9 +2,9 @@
 
 pragma solidity ^0.6.0;
 
-import "./_Interfaces.sol";
-import "./SafeMath.sol";
-import "./ERC20_Utils.sol";
+import "../models/_Interfaces.sol";
+import "../libraries/SafeMath.sol";
+import "../utils/ERC20_Utils.sol";
 
 // This contract secures votes via locking of tokens in the contract
 abstract contract _LockVote is ERC20_Utils {

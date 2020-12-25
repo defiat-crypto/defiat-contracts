@@ -18,11 +18,11 @@ pragma solidity ^0.6.0;
 //  which is half ETH and half DFT, then convert the ETH into DFT, and add the two values
 
 
-import "./_Interfaces.sol";
-import "./SafeMath.sol";
-import "./ERC20_Utils.sol";
-import "./_ERC20.sol";
-import "./Uni_Price_v2.sol";
+import "../models/_Interfaces.sol";
+import "../libraries/SafeMath.sol";
+import "../utils/ERC20_Utils.sol";
+import "../models/_ERC20.sol";
+import "../utils/Uni_Price_v2.sol";
 
 contract DeFiat_VotingPower is ERC20_Utils, Uni_Price_v2 {
     using SafeMath for uint256;

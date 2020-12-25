@@ -2,9 +2,9 @@
 
 pragma solidity ^0.6.0;
 
-import "./_Interfaces.sol";
-import "./Context.sol";
-import "./SafeMath.sol";
+import "./models/_Interfaces.sol";
+import "./libraries/Context.sol";
+import "./libraries/SafeMath.sol";
 
 interface Dungeon {
     function myStake(address _address) external view returns(uint256);

@@ -1,7 +1,7 @@
 pragma solidity ^0.6.0;
 
-import "./SafeMath.sol";
-import "./_Interfaces.sol";
+import "./libraries/SafeMath.sol";
+import "./models/_Interfaces.sol";
 
 
 interface IAnyStake_Library {

@@ -2,10 +2,10 @@
 
 pragma solidity ^0.6.0;
 
-import "./_Interfaces.sol";
-import "./SafeMath.sol";
-import "./ERC20_Utils.sol";
-import "./Uni_Price_v2.sol";
+import "../models/_Interfaces.sol";
+import "../libraries/SafeMath.sol";
+import "../utils/ERC20_Utils.sol";
+import "../utils/Uni_Price_v2.sol";
 
 abstract contract _Vote is ERC20_Utils, Uni_Price_v2 {
     using SafeMath for uint256;

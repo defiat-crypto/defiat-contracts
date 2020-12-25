@@ -10,6 +10,11 @@
     "export": "rsync -a build/ ../defiat-frontend/src/contracts/"
   },
   "devDependencies": {
+    "@openzeppelin/contracts": "^3.3.0",
+    "ethers": "^5.0.24",
+    "hardhat": "^2.0.6",
+    "hardhat-deploy": "^0.7.0-beta.39",
+    "hardhat-deploy-ethers": "^0.3.0-beta.7",
     "lerna": "^3.4.3",
     "solc": "0.6.6",
     "truffle": "^5.1.37",

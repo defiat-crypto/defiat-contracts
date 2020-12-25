@@ -2,7 +2,7 @@
 
 pragma solidity ^0.6.0;
 
-import "./_Interfaces.sol";
+import "./models/_Interfaces.sol";
 
 contract Donation {
     

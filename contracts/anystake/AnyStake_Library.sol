@@ -7,8 +7,8 @@
 pragma solidity >= 0.6;
 
 import "./AnyPrice.sol";
-import "./_ERC20.sol";
-import "./Address.sol";
+import "../models/_ERC20.sol";
+import "../libraries/Address.sol";
 
 contract AnyStake_Library is Any_Price {
     

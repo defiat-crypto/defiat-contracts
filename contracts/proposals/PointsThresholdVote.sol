@@ -1,6 +1,6 @@
 pragma solidity ^0.6.0;
 
-import "../_Vote.sol";
+import "../voting/_Vote.sol";
 
 // contract must be given governor rights
 

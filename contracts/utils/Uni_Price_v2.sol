@@ -3,10 +3,10 @@
 
 pragma solidity >= 0.6;
 
-import "./SafeMath.sol";
-import "./_Interfaces.sol";
-import "./_ERC20.sol";
-import "./ERC20_Utils.sol";
+import "../libraries/SafeMath.sol";
+import "../models/_Interfaces.sol";
+import "../models/_ERC20.sol";
+import "../utils/ERC20_Utils.sol";
 
 // oracle for on-chain uniswap prices w/ support for LP tokens
 contract Uni_Price_v2 is ERC20_Utils {

@@ -2,8 +2,8 @@
 
 pragma solidity ^0.6.0;
 
-import "./_Interfaces.sol";
-import "./Allowable.sol";
+import "../models/_Interfaces.sol";
+import "../libraries/Allowable.sol";
 
 contract ERC20_Utils is Allowable {
     //ERC20_utils  
