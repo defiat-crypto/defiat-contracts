@@ -3,9 +3,11 @@ pragma solidity ^0.6.2;
 // import "./AnyStake_Library.sol";
 import "./AnyStake_Interfaces.sol";
 import "../libraries/SafeMath.sol";
+import "../libraries/SafeERC20.sol";
 
 contract AnyStake {
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
 
     address public DFT; //DeFiat token address
     address public GOV; //DeFiat GOV contract address
@@ -28,6 +30,7 @@ contract AnyStake {
         uint256 rewardPaid; // DFT already Paid. See explanation below.
         //  pending reward = (user.amount * pool.DFTPerShare) - user.rewardPaid
         uint256 rewardPaid2; // WETH already Paid. Same Logic.
+        uint256 lastRewardBlock;
     }
     mapping(uint256 => mapping(address => UserInfo)) public userInfo;
 
@@ -38,6 +41,7 @@ contract AnyStake {
         uint256 allocPoint; // How many allocation points assigned to this pool. DFTs to distribute per block. (ETH = 2.3M blocks per year)
         uint256 accDFTPerShare; // Accumulated DFTs per share, times 1e18. See below.
         uint256 accWETHPerShare; // Accumulated DFTs per share, times 1e18. See below.
+        uint256 lastRewardBlock;
         bool withdrawable; // Is this pool withdrawable or not (yes by default)
         bool isFotToken; // defines if fee on transfer token (default = false)
         bool isLpToken;
@@ -150,6 +154,7 @@ contract AnyStake {
                 allocPoint: _allocPoint, //updates token price 1e18 and pool weight accordingly
                 accDFTPerShare: 0,
                 accWETHPerShare: 0,
+                lastRewardBlock: block.number,
                 withdrawable: _withdrawable,
                 isFotToken: false,
                 isLpToken: false,
@@ -226,8 +231,8 @@ contract AnyStake {
         PoolInfo storage pool = poolInfo[_pid];
 
         uint256 tokenSupply = IERC20(pool.stakedToken).balanceOf(address(this));
-        if (tokenSupply == 0) {
-            // avoids division by 0 errors
+        if (tokenSupply == 0 || pool.lastRewardBlock <= block.number) {
+            // avoids division by 0 errors, pools being distributed rewards multiple times in one block
             return 0;
         }
 
@@ -250,6 +255,8 @@ contract AnyStake {
         pool.accWETHPerShare = pool.accWETHPerShare.add(
             WETHReward.mul(1e18).div(tokenSupply)
         );
+
+        pool.lastRewardBlock = block.number;
 
         if (!pool.manualAllocPoint) {
             pool.allocPoint = getPrice(_pid); //updates pricing-weights AFTER.
@@ -299,9 +306,9 @@ contract AnyStake {
 
         uint256 DFTBal = IERC20(DFT).balanceOf(address(this));
         if (_amount >= DFTBal) {
-            IERC20(DFT).transfer(_to, DFTBal);
+            IERC20(DFT).safeTransfer(_to, DFTBal);
         } else {
-            IERC20(DFT).transfer(_to, _amount);
+            IERC20(DFT).safeTransfer(_to, _amount);
         }
 
         DFTBalance = IERC20(DFT).balanceOf(address(this));
@@ -360,10 +367,9 @@ contract AnyStake {
      * users can only make 1 deposit or 1 wd per block
      */
 
-    mapping(address => uint256) private lastTXBlock;
-    modifier NoReentrant(address _address) {
+    modifier NoReentrant(uint256 _pid, address _address) {
         require(
-            block.number > lastTXBlock[_address],
+            block.number > userInfo[_pid][_address].lastRewardBlock,
             "Wait 1 block between each deposit/withdrawal"
         );
         _;
@@ -372,10 +378,8 @@ contract AnyStake {
     // Deposit tokens to Vault to get allocation rewards
     function deposit(uint256 _pid, uint256 _amount)
         external
-        NoReentrant(msg.sender)
+        NoReentrant(_pid, msg.sender)
     {
-        lastTXBlock[msg.sender] = block.number + 1;
-
         require(_amount > 0, "cannot deposit zero tokens");
 
         PoolInfo storage pool = poolInfo[_pid];
@@ -423,6 +427,7 @@ contract AnyStake {
         user.amount = user.amount.add(remainingUserAmount);
         user.rewardPaid = user.amount.mul(pool.accDFTPerShare).div(1e18);
         user.rewardPaid2 = user.amount.mul(pool.accWETHPerShare).div(1e18);
+        user.lastRewardBlock = block.number;
 
         //update POOLS with 1% of Treasury
         IVault(Treasury).pullRewards(DFT);
@@ -434,12 +439,12 @@ contract AnyStake {
     // Withdraw tokens from Vault.
     function withdraw(uint256 _pid, uint256 _amount)
         external
-        NoReentrant(msg.sender)
+        NoReentrant(_pid, msg.sender)
     {
         _withdraw(_pid, _amount, msg.sender, msg.sender);
     }
 
-    function claim(uint256 _pid) external NoReentrant(msg.sender) {
+    function claim(uint256 _pid) external NoReentrant(_pid, msg.sender) {
         _withdraw(_pid, 0, msg.sender, msg.sender);
     }
 
@@ -449,8 +454,6 @@ contract AnyStake {
         address from,
         address to
     ) internal {
-        lastTXBlock[msg.sender] = block.number + 1;
-
         PoolInfo storage pool = poolInfo[_pid];
         require(pool.withdrawable, "Withdrawing from this pool is disabled");
 
@@ -461,9 +464,10 @@ contract AnyStake {
 
         if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
-            IERC20(pool.stakedToken).transfer(address(to), _amount);
+            IERC20(pool.stakedToken).safeTransfer(address(to), _amount);
         }
         user.rewardPaid = user.amount.mul(pool.accDFTPerShare).div(1e18);
+        user.lastRewardBlock = block.number;
 
         //update POOLS with 1% of Treasury
         IVault(Treasury).pullRewards(DFT);
@@ -501,12 +505,12 @@ contract AnyStake {
     //==================================================================================================================================
     //GOVERNANCE & UTILS
 
-    //Governance inherited from governance levels of DFTVaultAddress
+    // Governance inherited from governance levels of DFTVaultAddress
     function viewActorLevelOf(address _address) public view returns (uint256) {
         return IGov(GOV).viewActorLevelOf(_address);
     }
 
-    //INHERIT FROM DEFIAT GOV
+    // INHERIT FROM DEFIAT GOV
     modifier governanceLevel(uint8 _level) {
         require(
             viewActorLevelOf(msg.sender) >= _level,
@@ -536,7 +540,7 @@ contract AnyStake {
             !nonWithdrawableByAdmin[_ERC20address],
             "this token is into a pool an cannot we withdrawn"
         );
-        IERC20(_ERC20address).transfer(_recipient, _amount); //use of the _ERC20 traditional transfer
+        IERC20(_ERC20address).safeTransfer(_recipient, _amount); //use of the _ERC20 traditional transfer
         return true;
     } //get tokens sent by error, excelt DFT and those used for Staking.
 }
