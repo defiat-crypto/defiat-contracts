@@ -34,7 +34,14 @@ interface IWETH {
 }
 
 interface IVault {
+    function buyDFTWithETH() external;
+    function buyETHWithToken(address _token) external returns (uint256);
+    function pullRewards(address _token) external;
+    function getTokenPrice(address _token, address _lpToken) external view returns (uint256);
+}
 
+interface IGov {
+    function viewActorLevelOf(address _address) external view returns (uint256);
 }
 
 interface IDeFiat {
