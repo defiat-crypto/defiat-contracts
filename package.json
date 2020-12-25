@@ -2,20 +2,23 @@
   "name": "defiat-contracts",
   "version": "1.0.0",
   "scripts": {
+    "export": "rsync -a build/ ../defiat-frontend/src/contracts/",
     "bootstrap": "lerna bootstrap",
-    "chain": "npm run chain",
-    "compile": "truffle compile",
-    "migrate": "npm run deploy",
     "publish": "lerna publish",
-    "export": "rsync -a build/ ../defiat-frontend/src/contracts/"
+    "compile": "hardhat compile",
+    "dev": "hardhat node --watch",
+    "test": "hardhat test"
   },
   "devDependencies": {
     "@openzeppelin/contracts": "^3.3.0",
+    "@uniswap/v2-core": "^1.0.1",
+    "chai": "^4.2.0",
     "ethers": "^5.0.24",
     "hardhat": "^2.0.6",
     "hardhat-deploy": "^0.7.0-beta.39",
     "hardhat-deploy-ethers": "^0.3.0-beta.7",
     "lerna": "^3.4.3",
+    "mocha": "^8.1.2",
     "solc": "0.6.6",
     "truffle": "^5.1.37",
     "truffle-flattener": "^1.5.0"
