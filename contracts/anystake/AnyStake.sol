@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: DeFiat and Friends (Zeppelin, MIT...)
+
 pragma solidity ^0.6.2;
 
 // import "./AnyStake_Library.sol";
