@@ -2,29 +2,17 @@
 
 pragma solidity ^0.6.2;
 
-// import "./AnyStake_Library.sol";
-import "./AnyStake_Interfaces.sol";
-import "../libraries/SafeMath.sol";
-import "../libraries/SafeERC20.sol";
+import "./AnyStake_Libraries.sol";
 
-contract AnyStake {
+//series of pool weighted by token price (using price oracles on chain)
+contract AnyStake is AnyStake_Constants {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    address public DFT; //DeFiat token address
-    address public GOV; //DeFiat GOV contract address
-    address public Treasury; //where rewards are stored for distribution
-    uint256 public treasuryFee;
+    address public GOV; //DeFiat GOV contract address pulled from the contract
+    address public Vault; //where rewards are stored for distribution
     uint256 public pendingTreasuryRewards;
 
-    address public constant UniswapV2Router02 =
-        address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
-    address public constant UniswapV2Factory =
-        address(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f);
-
-    // address public constant WETH = address(0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2); // MAINNET
-    address public constant WETH =
-        address(0xc778417E063141139Fce010982780140Aa0cD5Ab); // RINKEBY
 
     // USERS METRICS
     struct UserInfo {
@@ -81,22 +69,81 @@ contract AnyStake {
         uint256 value
     );
 
-    //INITIALIZE
-    constructor(address _DFT, address _Treasury) public {
-        DFT = _DFT;
-        Treasury = _Treasury; // DFT Central
+//SETUP
+    // 1- create contract
+    constructor() public {}
+    
+    // 2- create VAULT contract (separate contract)
+    //
+    
+    // 3- run Initialize after the Vault has been created
+    function initialize(address _Vault) public governanceLevel(2) {
+        Vault = _Vault;
         GOV = IDeFiat(DFT).DeFiat_gov();
-
-        stakingFee = 50; // 5%base 1000
-
+        stakingFee = 50; // 5%base 100
         contractStartBlock = block.number;
+        
+        setupPools();
+    }
+    
+    // 4- create pools
+    function setupPools() internal {
+        
+    //IVault(Vault).getTokenPrice(_stakedToken, _lpToken);
+    //addPool(address _stakedToken, address _lpToken, bool _withdrawable, uint256 _allocPoint, bool _manualAllocPoint)
+    uint256 price;
+    
+    //lp-DFT
+    price = 100*1e18; //constant $100 --> pull $1 price from DAI
+    addPool( DFT,  address(0),  true,  price ,  false);
+    
+    //DFTP (NEW) -> worth x5 DFT price
+    addPool( DFTP, address(0), true, price.mul(5), false);
+    
+    //wBTC
+    price = IVault(Vault).getTokenPrice(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599, 0xBb2b8038a1640196FbE3e38816F3e67Cba72D940);
+    addPool(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599, 0xBb2b8038a1640196FbE3e38816F3e67Cba72D940,  true,  price ,  false);
+    
+    //USDC
+    addPool(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, 0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc,   true,  price ,  false);
+
+/*
+    //USDT
+    addPool(0xdAC17F958D2ee523a2206206994597C13D831ec7, 0x0d4a11d5EEaaC28EC3F61d100daF4d40471f1852,   true,  price ,  false);
+    //UNI
+    addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
+    
+    //YFI
+    addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
+    
+    //LINK
+    addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
+    
+    //MKR
+    addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
+    
+    //CEL
+    addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
+    
+    //SNX
+    addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
+    
+    //AAVE
+    addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
+    
+    //CORE
+    addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
+    
+    //AMPL
+    addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
+    */
     }
 
-    //==================================================================================================================================
-    //POOL
 
-    //view stuff
+//==================================================================================================================================
+//POOL
 
+//view stuff
     function poolLength() external view returns (uint256) {
         return poolInfo.length; //number of pools (PiDs)
     }
@@ -126,7 +173,7 @@ contract AnyStake {
     // For easy graphing historical epoch rewards
     mapping(uint256 => uint256) public epochRewards;
 
-    //set stuff (govenrors -> level inherited from DeFiat via governance)
+//set stuff (govenrors -> level inherited from DeFiat via governance)
 
     // Add a new token pool. Can only be called by governors.
     function addPool(
@@ -192,27 +239,25 @@ contract AnyStake {
         bool _isFotToken,
         bool _isLpToken,
         bool _manualAllocPoint
-    ) public {
+    ) public governanceLevel(2) {
         poolInfo[_pid].isFotToken = _isFotToken;
         poolInfo[_pid].isLpToken = _isLpToken;
         poolInfo[_pid].manualAllocPoint = _manualAllocPoint;
     }
 
     function activateDeactivatePool(uint256 _pid, bool _active)
-        public
-        governanceLevel(2)
+        public governanceLevel(2)
     {
         poolInfo[_pid].active = _active;
     }
 
     function setPoolWithdrawable(uint256 _pid, bool _withdrawable)
-        public
-        governanceLevel(2)
+        public governanceLevel(2)
     {
         poolInfo[_pid].withdrawable = _withdrawable;
     }
 
-    //set stuff (anybody)
+//set stuff (anybody)
     //Starts a new calculation epoch; Because average since start will not be accurate. DFT only
     function startNewEpoch() public {
         require(
@@ -299,7 +344,7 @@ contract AnyStake {
         uint256 pending2 = pendingWETH(_pid, user);
 
         safeDFTTransfer(user, pending);
-        IWETH(WETH).transfer(user, pending2);
+        IERC20(WETH).transfer(user, pending2);
     }
 
     // Safe DFT transfer function, Manages rounding errors and fee on Transfer
@@ -319,15 +364,15 @@ contract AnyStake {
     /* @dev called by the vault on staking/unstaking/claim
      *       updates the pendingRewards and the rewardsInThisEpoch variables for DFT
      */
-    modifier onlyTreasury() {
-        require(msg.sender == Treasury);
+    modifier onlyVault() {
+        require(msg.sender == Vault);
         _;
     }
 
     uint256 private DFTBalance;
     uint256 private WETHBalance;
-
-    function updateRewards() external onlyTreasury {
+    
+    function updateRewards() external onlyVault {
         //DFT
         uint256 newDFTRewards =
             IERC20(DFT).balanceOf(address(this)).sub(DFTBalance); //delta vs previous balanceOf
@@ -357,7 +402,7 @@ contract AnyStake {
 
         uint256 price = 0;
         if (!poolInfo[_pid].isLpToken) {
-            price = IVault(Treasury).getTokenPrice(_stakedToken, _lpToken);
+            price = IVault(Vault).getTokenPrice(_stakedToken, _lpToken);
         }
         return price;
     }
@@ -410,20 +455,20 @@ contract AnyStake {
         //1st move = get fee to Vault
         IERC20(pool.stakedToken).transferFrom(
             address(this),
-            Treasury,
+            Vault,
             stakingFeeAmount
         ); //GET ALL TOKENS FROM USER
 
         //2- buy wETH with the token
-        uint256 wETHBought = IVault(Treasury).buyETHWithToken(pool.stakedToken);
+        uint256 wETHBought = IVault(Vault).buyETHWithToken(pool.stakedToken);
 
         //3- use 50% of wETH and buyDFT with them
         if (wETHBought != 0) {
-            IVault(Treasury).buyDFTWithETH();
+            IVault(Vault).buyDFTWithETH();
         }
 
         //Send fees to Treasury (for redistribution later)
-        IERC20(pool.stakedToken).transfer(Treasury, stakingFeeAmount.div(2));
+        IERC20(pool.stakedToken).transfer(Vault, stakingFeeAmount.div(2));
 
         //Finalize, update USER's metrics
         user.amount = user.amount.add(remainingUserAmount);
@@ -432,8 +477,8 @@ contract AnyStake {
         user.lastRewardBlock = block.number;
 
         //update POOLS with 1% of Treasury
-        IVault(Treasury).pullRewards(DFT);
-        IVault(Treasury).pullRewards(WETH);
+        IVault(Vault).pullRewards(DFT);
+        IVault(Vault).pullRewards(WETH);
 
         emit Deposit(msg.sender, _pid, _amount);
     }
@@ -472,8 +517,8 @@ contract AnyStake {
         user.lastRewardBlock = block.number;
 
         //update POOLS with 1% of Treasury
-        IVault(Treasury).pullRewards(DFT);
-        IVault(Treasury).pullRewards(WETH);
+        IVault(Vault).pullRewards(DFT);
+        IVault(Vault).pullRewards(WETH);
 
         emit Withdraw(to, _pid, _amount);
     }
