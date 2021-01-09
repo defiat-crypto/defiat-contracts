@@ -93,12 +93,14 @@ contract AnyStake is AnyStake_Constants {
     //addPool(address _stakedToken, address _lpToken, bool _withdrawable, uint256 _allocPoint, bool _manualAllocPoint)
     uint256 price;
     
-    //lp-DFT
-    price = 100*1e18; //constant $100 --> pull $1 price from DAI
-    addPool( DFT,  address(0),  true,  price ,  false);
+    
+    
+    //DFT-lp
+    price = 100*1e18;
+    //addPool( DFT-UNI,  address(0),  true,  price ,  false);
     
     //DFTP (NEW) -> worth x5 DFT price
-    addPool( DFTP, address(0), true, price.mul(5), false);
+    //addPool( DFTP, address(0), true, _allocPoint, false);
     
     //wBTC
     price = IVault(Vault).getTokenPrice(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599, 0xBb2b8038a1640196FbE3e38816F3e67Cba72D940);
@@ -422,11 +424,8 @@ contract AnyStake is AnyStake_Constants {
         _;
     }
 
-    // Deposit tokens to Vault to get allocation rewards
-    function deposit(uint256 _pid, uint256 _amount)
-        external
-        NoReentrant(_pid, msg.sender)
-    {
+// Deposit tokens to Vault to get allocation rewards
+    function deposit(uint256 _pid, uint256 _amount) external NoReentrant(_pid, msg.sender) {
         require(_amount > 0, "cannot deposit zero tokens");
 
         PoolInfo storage pool = poolInfo[_pid];
@@ -434,43 +433,44 @@ contract AnyStake is AnyStake_Constants {
 
         updateAndPayOutPending(_pid, msg.sender); //Transfer pending tokens, updates the pools
 
-        // Calculate fees 95% default staking fee on non LP tokens)
-        uint256 stakingFeeAmount = _amount.mul(stakingFee).div(1000);
-        if (_pid <= 1) {
-            stakingFeeAmount = 0;
-        } //overides to zero if user is staking LP DFT-ETH tokens or DFT tokens, _pid 0 and _pid 1
+        
 
+        // PID = 0 : DFTlp
+        // PID = 1 : DFTP
+        // PID = 2 : wETH (price = 1)
+        // PID > 2 : all other tokens (wETH not supported, used as reward)
+        
+        uint256 stakingFeeAmount; 
+        if (_pid <= 1) {stakingFeeAmount = 0;} //overides to zero if user is staking LP DFT-ETH tokens or DFTP tokens, _pid 0 and _pid 1
+        else { stakingFeeAmount = _amount.mul(stakingFee).div(1000);}
+       
         uint256 remainingUserAmount = _amount.sub(stakingFeeAmount);
 
-        //Transfer the amounts from user and update pool user.amount
-        IERC20(pool.stakedToken).transferFrom(
-            msg.sender,
-            address(this),
-            _amount
-        ); //GET ALL TOKENS FROM USER
+
+    //Transfer the total amounts from user and update pool user.amount into the AnyStake contract
+        IERC20(pool.stakedToken).transferFrom( msg.sender, address(this), _amount);
+
+
 
         //read the POOL struct to see if fee is taken, if fot token or etc...
         //TODO
 
-        //1st move = get fee to Vault
-        IERC20(pool.stakedToken).transferFrom(
-            address(this),
-            Vault,
-            stakingFeeAmount
-        ); //GET ALL TOKENS FROM USER
 
-        //2- buy wETH with the token
-        uint256 wETHBought = IVault(Vault).buyETHWithToken(pool.stakedToken);
+        if(stakingFeeAmount != 0){
+            
+        // 1 - Anystake sends fee to Vault
+            IERC20(pool.stakedToken).approve(Vault, 2**256 - 1); //Vault approved to take etokens from Anystake. note: could be at the add pool level to save gas
+            IERC20(pool.stakedToken).transferFrom(address(this), Vault, stakingFeeAmount); //need permission -> initialize
 
-        //3- use 50% of wETH and buyDFT with them
-        if (wETHBought != 0) {
-            IVault(Vault).buyDFTWithETH();
+        // 2- Anystake buys wETH with the fee (except if wETH = stakedToken)
+        uint256 wETHBought = 0;
+        if(pool.stakedToken != WETH){wETHBought = IVault(Vault).buyETHWithToken(pool.stakedToken, stakingFeeAmount);} 
+
+        // 3- use 50% of wETH and buyDFT with them
+        if (wETHBought != 0) {IVault(Vault).buyDFTWithETH(wETHBought.div(2));} //AMOUNT???!
         }
 
-        //Send fees to Treasury (for redistribution later)
-        IERC20(pool.stakedToken).transfer(Vault, stakingFeeAmount.div(2));
-
-        //Finalize, update USER's metrics
+    //Finalize, update USER's metrics
         user.amount = user.amount.add(remainingUserAmount);
         user.rewardPaid = user.amount.mul(pool.accDFTPerShare).div(1e18);
         user.rewardPaid2 = user.amount.mul(pool.accWETHPerShare).div(1e18);
@@ -483,18 +483,33 @@ contract AnyStake is AnyStake_Constants {
         emit Deposit(msg.sender, _pid, _amount);
     }
 
-    // Withdraw tokens from Vault.
-    function withdraw(uint256 _pid, uint256 _amount)
-        external
-        NoReentrant(_pid, msg.sender)
-    {
+
+// Withdraw & Claim tokens from Vault.
+    function withdraw(uint256 _pid, uint256 _amount) external NoReentrant(_pid, msg.sender) {
         _withdraw(_pid, _amount, msg.sender, msg.sender);
     }
-
+    function emergencyWithdrawAll() external {
+        uint256 length = poolInfo.length;
+        for (uint256 pid = 0; pid < length; ++pid) {
+            
+            uint256 _amount = userInfo[pid][msg.sender].amount.mul(100).div(99);
+            _withdraw(pid, _amount, msg.sender, msg.sender);
+            
+            EmergencyWithdraw(msg.sender, pid, _amount);
+        }
+        
+    }
+    
     function claim(uint256 _pid) external NoReentrant(_pid, msg.sender) {
         _withdraw(_pid, 0, msg.sender, msg.sender);
     }
-
+    function claimAll() external {
+        uint256 length = poolInfo.length;
+        for (uint256 pid = 0; pid < length; ++pid) {
+            _withdraw(pid, 0, msg.sender, msg.sender);        }  
+    }
+    
+    //internal
     function _withdraw(
         uint256 _pid,
         uint256 _amount,
@@ -523,7 +538,9 @@ contract AnyStake is AnyStake_Constants {
         emit Withdraw(to, _pid, _amount);
     }
 
-    // Getter function to see pending DFT rewards per user.
+
+
+// Getter function to see pending DFT rewards per user.
     function pendingDFT(uint256 _pid, address _user)
         public
         view
