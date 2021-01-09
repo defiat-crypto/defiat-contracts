@@ -70,9 +70,9 @@ contract Anystake_Vault {
         return amountBought;
     }
     
-        //Buyback tokens with the staked fees (returns amount of tokens bought)
+    //Buyback tokens with the staked fees (returns amount of tokens bought)
     //send procees to treasury for redistribution
-    function buyDFTWithETH() internal returns(uint256){
+    function buyDFTWithETH(uint256 _amountETH) internal returns(uint256){
     
          address[] memory UniSwapPath = new address[](2);
 
@@ -81,8 +81,8 @@ contract Anystake_Vault {
      
         uint256 amountBought = IERC20(DFT).balanceOf(address(this)); //snapshot
         
-        IUniswapV2Router02(UniswapV2Router02).swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            IERC20(WETH).balanceOf(address(this)), 0,UniSwapPath, address(this), 1 days);
+        IUniswapV2Router02(UniswapV2Router02).swapExactETHForTokensSupportingFeeOnTransferTokens(
+            _amountETH,UniSwapPath, address(this), 1 days);
         
         //Calculate the amount of tokens Bought
         if( IERC20(DFT).balanceOf(address(this)) > amountBought){
