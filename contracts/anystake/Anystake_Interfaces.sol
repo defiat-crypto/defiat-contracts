@@ -80,8 +80,8 @@ interface IAnyStake {
 }
 
 interface IVault {
-    function buyDFTWithETH() external;
-    function buyETHWithToken(address _token) external returns (uint256);
+    function buyDFTWithETH(uint256 _amountETH) external;
+    function buyETHWithToken(address _token, uint256 _amount) external returns (uint256);
     
     function pullRewards(address _token) external;
     function getTokenPrice(address _token, address _lpToken) external view returns (uint256);
