@@ -8,7 +8,7 @@ require('hardhat-abi-exporter')
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  solidity: "0.6.2",
+  solidity: "0.6.6",
   namedAccounts: {
     deployer: 0,
 
