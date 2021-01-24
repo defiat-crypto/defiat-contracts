@@ -2,6 +2,7 @@
 
 pragma solidity ^0.6.2;
 
+import "./AnyStake_Constants.sol";
 import "./AnyStake_Libraries.sol";
 
 //series of pool weighted by token price (using price oracles on chain)
@@ -80,7 +81,7 @@ contract AnyStake is AnyStake_Constants {
     function initialize(address _Vault) public governanceLevel(2) {
         Vault = _Vault;
         GOV = IDeFiat(DFT).DeFiat_gov();
-        stakingFee = 50; // 5%base 100
+        stakingFee = 50; // 5%, base 100
         contractStartBlock = block.number;
         
         setupPools();
@@ -89,56 +90,56 @@ contract AnyStake is AnyStake_Constants {
     // 4- create pools
     function setupPools() internal {
         
-    //IVault(Vault).getTokenPrice(_stakedToken, _lpToken);
-    //addPool(address _stakedToken, address _lpToken, bool _withdrawable, uint256 _allocPoint, bool _manualAllocPoint)
-    uint256 price;
-    
-    
-    
-    //DFT-lp
-    price = 100*1e18;
-    //addPool( DFT-UNI,  address(0),  true,  price ,  false);
-    
-    //DFTP (NEW) -> worth x5 DFT price
-    //addPool( DFTP, address(0), true, _allocPoint, false);
-    
-    //wBTC
-    price = IVault(Vault).getTokenPrice(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599, 0xBb2b8038a1640196FbE3e38816F3e67Cba72D940);
-    addPool(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599, 0xBb2b8038a1640196FbE3e38816F3e67Cba72D940,  true,  price ,  false);
-    
-    //USDC
-    addPool(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, 0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc,   true,  price ,  false);
+        //IVault(Vault).getTokenPrice(_stakedToken, _lpToken);
+        //addPool(address _stakedToken, address _lpToken, bool _withdrawable, uint256 _allocPoint, bool _manualAllocPoint)
+        uint256 price;
+        
+        
+        
+        //DFT-lp
+        price = 100*1e18;
+        //addPool( DFT-UNI,  address(0),  true,  price ,  false);
+        
+        //DFTP (NEW) -> worth x5 DFT price
+        //addPool( DFTP, address(0), true, _allocPoint, false);
+        
+        //wBTC
+        price = IVault(Vault).getTokenPrice(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599, 0xBb2b8038a1640196FbE3e38816F3e67Cba72D940);
+        addPool(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599, 0xBb2b8038a1640196FbE3e38816F3e67Cba72D940,  true,  price ,  false);
+        
+        //USDC
+        addPool(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, 0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc,   true,  price ,  false);
 
-/*
-    //USDT
-    addPool(0xdAC17F958D2ee523a2206206994597C13D831ec7, 0x0d4a11d5EEaaC28EC3F61d100daF4d40471f1852,   true,  price ,  false);
-    //UNI
-    addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
-    
-    //YFI
-    addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
-    
-    //LINK
-    addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
-    
-    //MKR
-    addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
-    
-    //CEL
-    addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
-    
-    //SNX
-    addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
-    
-    //AAVE
-    addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
-    
-    //CORE
-    addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
-    
-    //AMPL
-    addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
-    */
+        /*
+        //USDT
+        addPool(0xdAC17F958D2ee523a2206206994597C13D831ec7, 0x0d4a11d5EEaaC28EC3F61d100daF4d40471f1852,   true,  price ,  false);
+        //UNI
+        addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
+        
+        //YFI
+        addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
+        
+        //LINK
+        addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
+        
+        //MKR
+        addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
+        
+        //CEL
+        addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
+        
+        //SNX
+        addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
+        
+        //AAVE
+        addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
+        
+        //CORE
+        addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
+        
+        //AMPL
+        addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
+        */
     }
 
 
@@ -488,6 +489,7 @@ contract AnyStake is AnyStake_Constants {
     function withdraw(uint256 _pid, uint256 _amount) external NoReentrant(_pid, msg.sender) {
         _withdraw(_pid, _amount, msg.sender, msg.sender);
     }
+    
     function emergencyWithdrawAll() external {
         uint256 length = poolInfo.length;
         for (uint256 pid = 0; pid < length; ++pid) {
@@ -503,10 +505,12 @@ contract AnyStake is AnyStake_Constants {
     function claim(uint256 _pid) external NoReentrant(_pid, msg.sender) {
         _withdraw(_pid, 0, msg.sender, msg.sender);
     }
+
     function claimAll() external {
         uint256 length = poolInfo.length;
         for (uint256 pid = 0; pid < length; ++pid) {
-            _withdraw(pid, 0, msg.sender, msg.sender);        }  
+            _withdraw(pid, 0, msg.sender, msg.sender);
+        }  
     }
     
     //internal

@@ -5,7 +5,7 @@ import "./models/_ERC20.sol";
 import "./DeFiat_Governance.sol";
 import "./DeFiat_Points.sol";
 
-contract DeFiat_Token is _ERC20 {  //overrides the _transfer function and adds burn capabilities
+contract DeFiatToken is _ERC20 {  //overrides the _transfer function and adds burn capabilities
 
     using SafeMath for uint;
 
@@ -54,7 +54,7 @@ contract DeFiat_Token is _ERC20 {  //overrides the _transfer function and adds b
     constructor (address _gov, address _points) public {  //token requires that governance and points are up and running
         mastermind = msg.sender;
         _constructor("DeFiat","DFT"); //calls the ERC20 _constructor
-        _mint(mastermind, 1e18 * 300000); //mint 300,000 tokens
+        _mint(mastermind, 1e18 * 500000); //mint 300,000 tokens
         
         DeFiat_gov = _gov;      // contract governing the Token
         DeFiat_points = _points;   // ERC20 loyalty TOKEN
@@ -84,23 +84,23 @@ contract DeFiat_Token is _ERC20 {  //overrides the _transfer function and adds b
 
     //== View variables from external contracts ==
     function _viewFeeRate() public view returns(uint256){
-       return DeFiat_Gov(DeFiat_gov).viewFeeRate();
+       return DeFiatGov(DeFiat_gov).viewFeeRate();
     }
 
     function _viewBurnRate() public view returns(uint256){
-        return DeFiat_Gov(DeFiat_gov).viewBurnRate();
+        return DeFiatGov(DeFiat_gov).viewBurnRate();
     }
 
     function _viewFeeDestination() public view returns(address){
-        return DeFiat_Gov(DeFiat_gov).viewFeeDestination();
+        return DeFiatGov(DeFiat_gov).viewFeeDestination();
     }
 
     function _viewDiscountOf(address _address) public view returns(uint256){
-        return DeFiat_Points(DeFiat_points).viewDiscountOf(_address);
+        return DeFiatPoints(DeFiat_points).viewDiscountOf(_address);
     }
 
     function _viewPointsOf(address _address) public view returns(uint256){
-        return DeFiat_Points(DeFiat_points).balanceOf(_address);
+        return DeFiatPoints(DeFiat_points).balanceOf(_address);
     }
   
     //== override _transfer function in the ERC20Simple contract ==    
@@ -114,13 +114,15 @@ contract DeFiat_Token is _ERC20 {  //overrides the _transfer function and adds b
         transaction.recipientDiscount = _viewDiscountOf(recipient);
         transaction.actualDiscount = SafeMath.max(transaction.senderDiscount, transaction.recipientDiscount);
         
-         if( transaction.actualDiscount > 100){transaction.actualDiscount = 100;} //manages "forever pools"
+        if (transaction.actualDiscount > 100) {
+             transaction.actualDiscount = 100;
+        } //manages "forever pools"
     
         return true;
     } //struct used to prevent "stack too deep" error
     
     function addPoints(address sender, uint256 _amount) public {
-        DeFiat_Points(DeFiat_points).addPoints(sender, _amount, 1e18); //Update user's loyalty points +1 = +1e18
+        DeFiatPoints(DeFiat_points).addPoints(sender, _amount, 1e18); //Update user's loyalty points +1 = +1e18
     }
     
     function _transfer(address sender, address recipient, uint256 amount) internal override { //overrides the inherited ERC20 _transfer
@@ -131,12 +133,9 @@ contract DeFiat_Token is _ERC20 {  //overrides the _transfer function and adds b
         updateTxStruct(sender, recipient);
         
         //get discounts and apply them. You get the MAX discounts of the sender x recipient. discount is base100
-           
-        uint256 dAmount = 
-        SafeMath.div(
-            SafeMath.mul(amount, 
-                                SafeMath.sub(100, transaction.actualDiscount))
-        ,100);     //amount discounted to calculate fees
+        
+        // amount discounted to calculate fees
+        uint256 dAmount = SafeMath.div(SafeMath.mul(amount, SafeMath.sub(100, transaction.actualDiscount)), 100); 
 
     //Calculates burn and fees on discounted amount (burn and fees are 0.0X% ie base 10000)
         uint _toBurn = SafeMath.div(SafeMath.mul(dAmount,transaction.burnRate),10000); 
@@ -145,16 +144,19 @@ contract DeFiat_Token is _ERC20 {  //overrides the _transfer function and adds b
    
         //transfers -> forcing _ERC20 level
         if(_toFee > 0) {
-        _ERC20._transfer(sender, transaction.feeDestination, _toFee); //native _transfer + emit
+            _ERC20._transfer(sender, transaction.feeDestination, _toFee); //native _transfer + emit
         } //transfer fee
         
-        if(_toBurn > 0) {_ERC20._burn(sender,_toBurn);} //native _burn tokens from sender
+        if(_toBurn > 0) {
+            _ERC20._burn(sender,_toBurn);
+        } //native _burn tokens from sender
         
         //transfer remaining amount. + emit
         _ERC20._transfer(sender, recipient, _amount); //native _transfer + emit
 
         //mint loyalty points and update lastTX
-        if(sender != recipient){addPoints(sender, amount);} //uses the full amount to determine point minting
-
+        if(sender != recipient){
+            addPoints(sender, amount);
+        } //uses the full amount to determine point minting
     }
 }

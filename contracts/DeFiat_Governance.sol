@@ -1,6 +1,6 @@
 pragma solidity ^0.6.0;
 
-contract DeFiat_Gov {
+contract DeFiatGov {
     //Governance contract for DeFiat Token.
 
     address public mastermind;

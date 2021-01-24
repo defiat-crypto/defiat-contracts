@@ -2,16 +2,15 @@
 
 pragma solidity ^0.6.6;
 
+import "./AnyStake_Constants.sol";
 import "./AnyStake_Libraries.sol";
 
 
 // Vault distributes tokens to AnyStake, get token prices (oracle) and performs buybacks operations.
-contract Anystake_Vault {
+contract AnyStakeVault is AnyStake_Constants {
     using SafeMath for uint256;
+
     address public AnyStake;
-    address public WETH;
-    address public UniswapV2Router02;
-    address public DFT;
     
     constructor(address _anystake) public {
         AnyStake = _anystake;
@@ -63,9 +62,11 @@ contract Anystake_Vault {
             _amountIN, 0,UniSwapPath, address(this), 1 days);
         
         //Calculate the amount of tokens Bought
-        if( IERC20(WETH).balanceOf(address(this))> amountBought){
-            amountBought = IERC20(WETH).balanceOf(address(this)).sub(amountBought);}
-        else{amountBought = 0;}
+        if (IERC20(WETH).balanceOf(address(this))> amountBought) {
+            amountBought = IERC20(WETH).balanceOf(address(this)).sub(amountBought);
+        } else { 
+            amountBought = 0;
+        }
         
         return amountBought;
     }
@@ -73,21 +74,22 @@ contract Anystake_Vault {
     //Buyback tokens with the staked fees (returns amount of tokens bought)
     //send procees to treasury for redistribution
     function buyDFTWithETH(uint256 _amountETH) internal returns(uint256){
-    
-         address[] memory UniSwapPath = new address[](2);
+        address[] memory UniSwapPath = new address[](2);
 
-            UniSwapPath[0] = WETH; 
-            UniSwapPath[1] = DFT;
+        UniSwapPath[0] = WETH;
+        UniSwapPath[1] = DFT;
      
-        uint256 amountBought = IERC20(DFT).balanceOf(address(this)); //snapshot
+        uint256 amountBought = IERC20(DFT).balanceOf(address(this)); // snapshot
         
         IUniswapV2Router02(UniswapV2Router02).swapExactETHForTokensSupportingFeeOnTransferTokens(
             _amountETH,UniSwapPath, address(this), 1 days);
         
         //Calculate the amount of tokens Bought
-        if( IERC20(DFT).balanceOf(address(this)) > amountBought){
-            amountBought = IERC20(DFT).balanceOf(address(this)).sub(amountBought);}
-        else{amountBought = 0;}
+        if (IERC20(DFT).balanceOf(address(this)) > amountBought) {
+            amountBought = IERC20(DFT).balanceOf(address(this)).sub(amountBought);
+        } else {
+            amountBought = 0;
+        }
         
         return amountBought;
     }

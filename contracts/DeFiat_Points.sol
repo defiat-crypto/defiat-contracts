@@ -2,7 +2,7 @@ pragma solidity ^0.6.0;
 
 import "./models/_ERC20.sol";
 
-contract DeFiat_Points is _ERC20{
+contract DeFiatPoints is _ERC20{
     
     //global variables
     address public deFiat_Token;                        //DeFiat token address 

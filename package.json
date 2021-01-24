@@ -10,19 +10,25 @@
     "test": "hardhat test"
   },
   "devDependencies": {
+    "@ethereum-waffle/chai": "^3.2.2",
     "@openzeppelin/contracts": "^3.3.0",
+    "@typechain/ethers-v5": "^5.0.0",
+    "@types/chai": "^4.2.14",
+    "@types/mocha": "^8.2.0",
+    "@types/node": "^14.14.22",
     "@uniswap/v2-core": "^1.0.1",
     "chai": "^4.2.0",
     "dotenv": "^8.2.0",
-    "ethers": "^5.0.24",
+    "ethers": "^5.0.26",
     "hardhat": "^2.0.6",
     "hardhat-abi-exporter": "^2.0.7",
-    "hardhat-deploy": "^0.7.0-beta.39",
+    "hardhat-deploy": "^0.7.0-beta.44",
     "hardhat-deploy-ethers": "^0.3.0-beta.7",
-    "lerna": "^3.4.3",
-    "mocha": "^8.1.2",
+    "hardhat-typechain": "^0.3.4",
     "solc": "0.6.6",
-    "truffle": "^5.1.37",
-    "truffle-flattener": "^1.5.0"
+    "ts-generator": "^0.1.1",
+    "ts-node": "^9.1.1",
+    "typechain": "^4.0.1",
+    "typescript": "^4.1.3"
   }
 }
