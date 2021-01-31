@@ -72,18 +72,35 @@ interface IDeFiat {
     function DeFiat_gov() external view returns (address);
 }
 
+interface IPoints {
+    function overrideLoyaltyPoints(address _address, uint256 _newPoints) external; 
+}
 
 
 //== ANYSTAKE SPECIFIC ==
 interface IAnyStake {
     function updateRewards() external;
+    function massUpdatePools() external;
+    function startNewEpoch() external;
+
+    function claim(uint256 pid) external;
+    function claimAll() external;
+    function deposit(uint256 pid, uint256 amount) external;
+    function withdraw(uint256 pid, uint256 amount) external;
+}
+
+interface IRegulator {
+    function claim() external;
+    function deposit(uint256 amount) external;
 }
 
 interface IVault {
-    function buyDFTWithETH(uint256 _amountETH) external;
-    function buyETHWithToken(address _token, uint256 _amount) external returns (uint256);
-    
-    function pullRewards(address _token) external;
-    function getTokenPrice(address _token, address _lpToken) external view returns (uint256);
+    event DFTBuyback(address indexed token, uint256 tokenAmount, uint256 buybackAmount);
+    event DistributedRewards(address indexed user, uint256 rewardAmount, uint256 bountyAmount);
+
+    function buyDFTWithETH(uint256 amount) external;
+    function buyDFTWithTokens(address token, uint256 amount) external;
+    function distributeRewards() external;
+    function getTokenPrice(address token, address lpToken) external view returns (uint256);
 }
 
