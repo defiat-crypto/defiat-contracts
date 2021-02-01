@@ -12,40 +12,60 @@ contract AnyStakeVault is AnyStakeBase, IVault {
     using SafeERC20 for IERC20;
 
     event DFTBuyback(address indexed token, uint256 tokenAmount, uint256 buybackAmount);
-    event DistributedRewards(address indexed user, uint256 rewardAmount, uint256 bountyAmount);
+    event DistributedRewards(address indexed user, uint256 anystakeAmount, uint256 regulatorAmount, uint256 bountyAmount);
+
+    string public constant UNI_SYMBOL = "UNI-V2";
 
     address public AnyStake;
     address public Regulator;
     uint256 public distributionBounty; // % of collected rewards paid for distributing to AnyStake pools
+    uint256 public distributionRate; // % of rewards which are sent to AnyStake
 
     modifier onlyAnyStake() {
         require(msg.sender == AnyStake);
         _;
     }
     
-    constructor(address _anystake, address _regulator) public {
-        AnyStake = _anystake;
-        Regulator = _regulator;
+    constructor(address router, address dft, address dftp, address anystake, address regulator) 
+        public
+        AnyStakeBase(router, dft, dftp)
+    {
+        AnyStake = anystake;
+        Regulator = regulator;
         distributionBounty = 30; // 3%, base 100
+        distributionRate = 800; // 80%, base 100
     }
+
+    // Reward Distribution
     
     function distributeRewards() external override {
         uint256 amount = IERC20(DFT).balanceOf(address(this));
         uint256 bountyAmount = amount.mul(distributionBounty).div(1000);
         uint256 rewardAmount = amount.sub(bountyAmount);
+        uint256 anystakeAmount = rewardAmount.mul(distributionRate).div(1000);
+        uint256 regulatorAmount = rewardAmount.sub(anystakeAmount);
 
-        IERC20(DFT).safeTransfer(AnyStake, rewardAmount);
-        // IERC20(DFT).safeTransfer(Regulator, rewardAmount);
+        IERC20(DFT).safeTransfer(AnyStake, anystakeAmount);
+        IERC20(DFT).safeTransfer(Regulator, regulatorAmount);
 
-        IAnyStake(AnyStake).updateRewards(); // updates rewards
         IAnyStake(AnyStake).massUpdatePools();
-        // IRegulator(Regulator).updatePool();
+        IRegulator(Regulator).updatePool();
 
         if (bountyAmount > 0) {
             IERC20(DFT).safeTransfer(msg.sender, bountyAmount);
         }
 
-        emit DistributedRewards(msg.sender, rewardAmount, bountyAmount);
+        emit DistributedRewards(msg.sender, anystakeAmount, regulatorAmount, bountyAmount);
+    }
+
+    function setDistributionBounty(uint256 bounty) external governanceLevel(2) {
+        require(bounty <= 1000, "Cannot be greater than 100%");
+        distributionBounty = bounty;
+    }
+
+    function setDistributionRate(uint256 rate) external governanceLevel(2) {
+        require(rate <= 1000, "Cannot be greater than 100%");
+        distributionRate = rate;
     }
     
     
@@ -53,26 +73,40 @@ contract AnyStakeVault is AnyStakeBase, IVault {
 
     // internal view function to view price of any token in ETH
     // return is 1e18. max Solidity is 1e77. 
-    function getTokenPrice(address _token, address _lpToken) public override view returns (uint256) {
-        if (_token == WETH) {
+    function getTokenPrice(address token, address lpToken) public override view returns (uint256) {
+        if (token == WETH) {
             return 1e18;
         }
         
-        // USE VWAP TO AVOID FLASH LOAN ATTACKS 
-        // https://github.com/Uniswap/uniswap-v2-periphery/blob/master/contracts/libraries/UniswapV2OracleLibrary.sol#L16
-        uint256 tokenBalance = IERC20(_token).balanceOf(_lpToken);
-        if (tokenBalance > 0) {
-            uint256 wethBalance = IERC20(WETH).balanceOf(_lpToken);
-            uint256 adjuster = 36 - uint256(IERC20(_token).decimals()); // handle non-base 18 tokens
-            uint256 tokensPerEth = tokenBalance.mul(10**adjuster).div(wethBalance);
-            return uint256(1e36).div(tokensPerEth); // price in gwei of token
+        bool isLpToken = isLiquidityToken(token);
+        address subject = isLpToken ? token : lpToken;
+        
+        uint256 wethReserves;
+        uint256 tokenReserves;
+        if (IUniswapV2Pair(subject).token0() == WETH) {
+            (wethReserves, tokenReserves, ) = IUniswapV2Pair(subject).getReserves();
         } else {
-            return 0;
+            (tokenReserves, wethReserves, ) = IUniswapV2Pair(subject).getReserves();
         }
+        
+        if (tokenReserves == 0) {
+            return 0;
+        } else if (isLpToken) {
+            return wethReserves.mul(2e18).div(IERC20(token).totalSupply());
+        } else {
+            uint256 adjuster = 36 - uint256(IERC20(token).decimals());
+            uint256 tokensPerEth = tokenReserves.mul(10**adjuster).div(wethReserves);
+            return uint256(1e36).div(tokensPerEth);
+        }
+    }
+
+    function isLiquidityToken(address token) internal view returns (bool) {
+        return keccak256(bytes(IERC20(token).symbol())) == keccak256(bytes(UNI_SYMBOL));
     }
     
     
     // UNISWAP PURCHASES
+    // TODO: Approvals ****
     
     //Buyback tokens with the staked fees (returns amount of tokens bought)
     //send procees to treasury for redistribution
@@ -127,30 +161,3 @@ contract AnyStakeVault is AnyStakeBase, IVault {
         emit DFTBuyback(token, amount, amountBought);
     }
 }
-
-// // Buyback tokens with the staked fees (returns amount of tokens bought)
-// // send procees to treasury for redistribution
-// function buyETHWithToken(address _token, uint256 _amountIN) internal returns(uint256){
-//     address[] memory UniSwapPath = new address[](2);
-//     UniSwapPath[0] = _token;   //token staked (fee taken)
-//     UniSwapPath[1] = WETH;
-    
-//     uint256 amountBought = IERC20(WETH).balanceOf(address(this)); //snapshot
-    
-//     IUniswapV2Router02(UniswapV2Router02).swapExactTokensForTokensSupportingFeeOnTransferTokens(
-//         _amountIN, 
-//         0,
-//         UniSwapPath,
-//         address(this),
-//         1 days
-//     );
-    
-//     //Calculate the amount of tokens Bought
-//     if (IERC20(WETH).balanceOf(address(this))> amountBought) {
-//         amountBought = IERC20(WETH).balanceOf(address(this)).sub(amountBought);
-//     } else { 
-//         amountBought = 0;
-//     }
-    
-//     return amountBought;
-// }

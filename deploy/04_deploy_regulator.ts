@@ -2,10 +2,10 @@ import {DeployFunction} from 'hardhat-deploy/types';
 import {DeFiatGov} from '../typechain';
 
 const func: DeployFunction = async ({getNamedAccounts, deployments, ethers, network}) => {  
-  const {deploy, read} = deployments;
+  const {deploy} = deployments;
   const {deployer, uniswap, dft, dftp, gov} = await getNamedAccounts();
 
-  const result = await deploy('AnyStake', {
+  const result = await deploy('AnyStakeRegulator', {
     from: deployer,
     log: true,
     args: [uniswap, dft, dftp]
@@ -19,11 +19,11 @@ const func: DeployFunction = async ({getNamedAccounts, deployments, ethers, netw
       const governanceArtifact = await deployments.getArtifact('DeFiatGov');
       governance = await ethers.getContractAt(governanceArtifact.abi, gov, deployer) as DeFiatGov;
     }
-    
-    await governance.setActorLevel(result.address, 2).then(tx => tx.wait());
-    console.log('AnyStake Governance successfully configured.');
 
-    // whitelist the AnyStake contract for DFT fees
+    await governance.setActorLevel(result.address, 2).then(tx => tx.wait());
+    console.log('Regulator Governance successfully configured.');
+
+    // whitelist the Regulator contract for DFT fees
   }
 };
 

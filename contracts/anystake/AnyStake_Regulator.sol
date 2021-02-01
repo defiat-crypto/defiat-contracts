@@ -23,8 +23,8 @@ contract AnyStakeRegulator is AnyStakeBase, IRegulator {
     
     address public Vault;
     uint256 public priceMultiplier; // pegs price at DFT_PRICE * (priceMultiplier / 1000)
-    uint256 public accDFTPerShare;
-
+    uint256 public exponentialRetry; // exponentially increases burn on each successive attempt
+    uint256 public accDFTPerShare; 
 
     modifier NoReentrant(address user) {
         require(
@@ -34,7 +34,7 @@ contract AnyStakeRegulator is AnyStakeBase, IRegulator {
         _;
     }
 
-    constructor() public {
+    constructor(address router, address dft, address dftp) public AnyStakeBase(router, dft, dftp) {
         priceMultiplier = 2500; // 2.5x, min DFT fee/burn needed to generate 1 DFTP 
     }
 
@@ -65,7 +65,7 @@ contract AnyStakeRegulator is AnyStakeBase, IRegulator {
     }
 
     // update pool rewards
-    function updatePool() external {
+    function updatePool() external override {
 
     }
 
@@ -80,6 +80,11 @@ contract AnyStakeRegulator is AnyStakeBase, IRegulator {
             return;
         }
 
+        // calculate user.rewards
+
+        _user.amount = 0; // burn entire stake
+        //_user.rewardPaid = ...
+        _user.lastEntryBlock = block.number;
 
         emit Claim(user, 0);
     }
@@ -98,6 +103,7 @@ contract AnyStakeRegulator is AnyStakeBase, IRegulator {
         stabilize(amount); // perform stabilization
 
         _user.amount = _user.amount.add(amount);
+        //_user.rewardPaid = ...
         _user.lastEntryBlock = block.number;
 
         emit Deposit(user, amount);

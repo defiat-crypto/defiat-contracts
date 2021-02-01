@@ -4,6 +4,7 @@ pragma solidity ^0.6.2;
 
 import "./AnyStake_Constants.sol";
 import "./AnyStake_Libraries.sol";
+import "hardhat/console.sol";
 
 //series of pool weighted by token price (using price oracles on chain)
 contract AnyStake is AnyStakeBase, IAnyStake {
@@ -25,8 +26,7 @@ contract AnyStake is AnyStakeBase, IAnyStake {
         uint256 allocPoint; // How many allocation points assigned to this pool. DFTs to distribute per block. (ETH = 2.3M blocks per year)
         uint256 accDFTPerShare; // Accumulated DFTs per share, times 1e18. See below.
         uint256 lastRewardBlock; // last pool update
-        uint256 valueLocked; // total value of tokens staked in pool (ETH)
-        // bool isFotToken; // defines if fee on transfer token (default = false)
+        uint256 valueLocked; // total value of tokens staked in pool (ETH), calculated every update
         bool active; // whether pool is accepting deposits (default = true)
     }
 
@@ -36,13 +36,12 @@ contract AnyStake is AnyStakeBase, IAnyStake {
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
 
-    address public Governance; //DeFiat GOV contract address pulled from the contract
     address public Vault; //where rewards are stored for distribution
 
     PoolInfo[] public poolInfo; // array of AnyStake pools
     mapping(uint256 => mapping(address => UserInfo)) public userInfo; // mapping of (pid => (userAddress => userInfo))
     mapping(uint256 => uint256) public epochRewards; // For easy graphing historical epoch rewards
-    mapping(address => uint256) public pids; // quick mapping for pool ids
+    mapping(address => uint256) public pids; // quick mapping for pool ids (staked_token => pid)
     mapping(address => bool) nonWithdrawableByAdmin; // Anti RUG and EXIT by admins protocols
 
     uint256 public stakingFee; // fee to stake ERC-20 tokens
@@ -76,8 +75,7 @@ contract AnyStake is AnyStakeBase, IAnyStake {
         _;
     }
 
-    constructor() public {
-        Governance = IDeFiat(DFT).DeFiat_gov();
+    constructor(address router, address dft, address dftp) public AnyStakeBase(router, dft, dftp) {
         stakingFee = 50; // 5%, base 100
     }
     
@@ -228,13 +226,6 @@ contract AnyStake is AnyStakeBase, IAnyStake {
         poolInfo[_pid].allocPoint = _allocPoint;
     }
 
-    // function setPoolTokenType(
-    //     uint256 _pid,
-    //     bool _isFotToken
-    // ) public governanceLevel(2) {
-    //     poolInfo[_pid].isFotToken = _isFotToken;
-    // }
-
     function setPoolActive(uint256 _pid, bool _active)
         public governanceLevel(2)
     {
@@ -265,9 +256,11 @@ contract AnyStake is AnyStakeBase, IAnyStake {
     }
 
     function massUpdatePools() public override onlyVault {
-        uint length = poolInfo.length;
+        startNewEpoch(); // try to start a new rewards epoch
+        updateRewards(); // update with new rewards
 
-        // update total pool values
+        // update pool total value locked vars
+        uint length = poolInfo.length;
         totalValueLocked = 0;
         for (uint256 pid = 0; pid < length; ++pid) {
             uint256 price = getPrice(pid);
@@ -295,7 +288,7 @@ contract AnyStake is AnyStakeBase, IAnyStake {
         DFTBalance = IERC20(DFT).balanceOf(address(this));
     }
     
-    function updateRewards() external override onlyVault {
+    function updateRewards() internal {
         uint256 newDFTRewards = IERC20(DFT).balanceOf(address(this)).sub(DFTBalance); // delta vs previous balanceOf
 
         if (newDFTRewards > 0) {
