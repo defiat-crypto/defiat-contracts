@@ -23,8 +23,8 @@ abstract contract AnyStakeBase {
         address factory = IUniswapV2Router02(router).factory();
         WETH = weth;
         UniswapV2Factory = factory; 
-        DFT_LP = IUniswapV2Factory(factory).getPair(dft, weth);
-        DFTP_LP = IUniswapV2Factory(factory).getPair(dftp, weth);
+        DFT_LP = address(0);// IUniswapV2Factory(factory).getPair(dft, weth);
+        DFTP_LP = address(0); //IUniswapV2Factory(factory).getPair(dftp, weth);
     }
 
     // address public constant UniswapV2Router02 = address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);

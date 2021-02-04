@@ -20,6 +20,11 @@ contract AnyStakeVault is AnyStakeBase, IVault {
     address public Regulator;
     uint256 public distributionBounty; // % of collected rewards paid for distributing to AnyStake pools
     uint256 public distributionRate; // % of rewards which are sent to AnyStake
+    uint256 public totalBuybackAmount;
+    uint256 public totalRewardsDistributed;
+
+    IERC20 DeFiat;
+    IUniswapV2Router02 Router; 
 
     modifier onlyAnyStake() {
         require(msg.sender == AnyStake);
@@ -39,20 +44,20 @@ contract AnyStakeVault is AnyStakeBase, IVault {
     // Reward Distribution
     
     function distributeRewards() external override {
-        uint256 amount = IERC20(DFT).balanceOf(address(this));
+        uint256 amount = DeFiat.balanceOf(address(this));
         uint256 bountyAmount = amount.mul(distributionBounty).div(1000);
         uint256 rewardAmount = amount.sub(bountyAmount);
         uint256 anystakeAmount = rewardAmount.mul(distributionRate).div(1000);
         uint256 regulatorAmount = rewardAmount.sub(anystakeAmount);
 
-        IERC20(DFT).safeTransfer(AnyStake, anystakeAmount);
-        IERC20(DFT).safeTransfer(Regulator, regulatorAmount);
+        DeFiat.safeTransfer(AnyStake, anystakeAmount);
+        DeFiat.safeTransfer(Regulator, regulatorAmount);
 
         IAnyStake(AnyStake).massUpdatePools();
         IRegulator(Regulator).updatePool();
 
         if (bountyAmount > 0) {
-            IERC20(DFT).safeTransfer(msg.sender, bountyAmount);
+            DeFiat.safeTransfer(msg.sender, bountyAmount);
         }
 
         emit DistributedRewards(msg.sender, anystakeAmount, regulatorAmount, bountyAmount);
@@ -79,14 +84,14 @@ contract AnyStakeVault is AnyStakeBase, IVault {
         }
         
         bool isLpToken = isLiquidityToken(token);
-        address subject = isLpToken ? token : lpToken;
+        IUniswapV2Pair pair = isLpToken ? IUniswapV2Pair(token) : IUniswapV2Pair(lpToken);
         
         uint256 wethReserves;
         uint256 tokenReserves;
-        if (IUniswapV2Pair(subject).token0() == WETH) {
-            (wethReserves, tokenReserves, ) = IUniswapV2Pair(subject).getReserves();
+        if (pair.token0() == WETH) {
+            (wethReserves, tokenReserves, ) = pair.getReserves();
         } else {
-            (tokenReserves, wethReserves, ) = IUniswapV2Pair(subject).getReserves();
+            (tokenReserves, wethReserves, ) = pair.getReserves();
         }
         
         if (tokenReserves == 0) {
@@ -106,58 +111,65 @@ contract AnyStakeVault is AnyStakeBase, IVault {
     
     
     // UNISWAP PURCHASES
-    // TODO: Approvals ****
     
     //Buyback tokens with the staked fees (returns amount of tokens bought)
     //send procees to treasury for redistribution
     function buyDFTWithETH(uint256 amount) external override onlyAnyStake {
+        if (amount == 0) {
+            return;
+        }
+
         address[] memory UniSwapPath = new address[](2);
         UniSwapPath[0] = WETH;
         UniSwapPath[1] = DFT;
      
-        uint256 amountBought = IERC20(DFT).balanceOf(address(this)); // snapshot
+        uint256 amountBefore = DeFiat.balanceOf(address(this));
         
-        IUniswapV2Router02(UniswapV2Router02).swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            amount,
+        Router.swapExactETHForTokensSupportingFeeOnTransferTokens{
+            value: amount
+        }(
             0,
             UniSwapPath, 
             address(this), 
-            1 days
+            block.timestamp + 5 minutes
         );
+
+        uint256 amountAfter = DeFiat.balanceOf(address(this));
         
-        //Calculate the amount of tokens Bought
-        if (IERC20(DFT).balanceOf(address(this)) > amountBought) {
-            amountBought = IERC20(DFT).balanceOf(address(this)).sub(amountBought);
-        } else {
-            amountBought = 0;
-        }
-        
-        emit DFTBuyback(WETH, amount, amountBought);
+        emit DFTBuyback(WETH, amount, amountAfter.sub(amountBefore));
     }
 
     function buyDFTWithTokens(address token, uint256 amount) external override onlyAnyStake {
-        address[] memory UniSwapPath = new address[](3);
-        UniSwapPath[0] = token; // ERC20 in
-        UniSwapPath[1] = WETH; // WETH intermediary
-        UniSwapPath[2] = DFT; // DFT out
-     
-        uint256 amountBought = IERC20(DFT).balanceOf(address(this)); // snapshot
+        if (amount == 0) {
+            return;
+        }
         
-        IUniswapV2Router02(UniswapV2Router02).swapExactTokensForTokensSupportingFeeOnTransferTokens(
+        address[] memory UniSwapPath = new address[](token == WETH ? 2 : 3);
+        if (token == WETH) {
+            UniSwapPath[0] = WETH; // WETH in
+            UniSwapPath[1] = DFT; // DFT out
+        } else {
+            UniSwapPath[0] = token; // ERC20 in
+            UniSwapPath[1] = WETH; // WETH intermediary
+            UniSwapPath[2] = DFT; // DFT out
+        }
+     
+        uint256 amountBefore = DeFiat.balanceOf(address(this)); // snapshot
+        
+        if (IERC20(token).allowance(address(this), UniswapV2Router02) == 0) {
+            IERC20(token).approve(UniswapV2Router02, 2 ** 256 - 1);
+        }
+
+        Router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
             amount, 
             0,
             UniSwapPath,
             address(this),
-            1 days
+            block.timestamp + 5 minutes
         );
+
+        uint256 amountAfter = DeFiat.balanceOf(address(this));
         
-        // Calculate the amount of tokens Bought
-        if (IERC20(DFT).balanceOf(address(this)) > amountBought) {
-            amountBought = IERC20(WETH).balanceOf(address(this)).sub(amountBought);
-        } else { 
-            amountBought = 0;
-        }
-        
-        emit DFTBuyback(token, amount, amountBought);
+        emit DFTBuyback(token, amount, amountAfter.sub(amountBefore));
     }
 }

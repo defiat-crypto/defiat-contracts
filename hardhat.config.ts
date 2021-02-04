@@ -21,24 +21,24 @@ const config: HardhatUserConfig = {
     dft: {
       1: "0xB6eE603933E024d8d53dDE3faa0bf98fE2a3d6f1",
       4: "0xB571d40e4A7087C1B73ce6a3f29EaDfCA022C5B2",
-      31337: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"
+      31337: "0x0165878A594ca255338adfa4d48449f69242Eb8F",
     },
     dftp: {
       1: "0x8c9d8f5CC3427F460e20F63b36992f74AA19e27d",
       4: "0x70c7d7856e1558210cfbf27b7f17853655752453",
-      31337: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+      31337: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
     },
     gov: {
       1: "0x3Aa3303877A0D1c360a9FE2693AE9f31087A1381",
       4: "0x064fd7d9c228e8a4a2bf247b432a34d6e1cb9442",
-      31337: "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+      31337: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
     },
     alpha: 1,
     beta: 2,
   },
   abiExporter: {
     clear: true,
-    flat: true
+    flat: true,
   },
   networks: {
     hardhat: {
@@ -50,13 +50,13 @@ const config: HardhatUserConfig = {
       // ],
       forking: {
         blockNumber: 11768005,
-        url: process.env.ALCHEMY_MAIN_DEV_KEY || ''
-      }
+        url: process.env.ALCHEMY_MAIN_DEV_KEY || "",
+      },
     },
     localhost: {
-      url: 'http://localhost:8545',
+      url: "http://localhost:8545",
     },
-  }
+  },
 };
 
 export default config;

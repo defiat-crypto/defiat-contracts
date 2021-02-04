@@ -60,6 +60,15 @@ interface IUniswapV2Router01 {
     function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts);
     function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts);
     function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts);
+
+    function addLiquidityETH(
+        address token,
+        uint amountTokenDesired,
+        uint amountTokenMin,
+        uint amountETHMin,
+        address to,
+        uint deadline
+    ) external payable returns (uint amountToken, uint amountETH, uint liquidity);
 } 
     
 interface IUniswapV2Router02 is IUniswapV2Router01 {
@@ -100,9 +109,6 @@ interface IRegulator {
 }
 
 interface IVault {
-    event DFTBuyback(address indexed token, uint256 tokenAmount, uint256 buybackAmount);
-    event DistributedRewards(address indexed user, uint256 rewardAmount, uint256 bountyAmount);
-
     function buyDFTWithETH(uint256 amount) external;
     function buyDFTWithTokens(address token, uint256 amount) external;
     function distributeRewards() external;

@@ -22,9 +22,10 @@ contract AnyStakeRegulator is AnyStakeBase, IRegulator {
     mapping (address => UserInfo) public userInfo;
     
     address public Vault;
+    bool public initialized;
     uint256 public priceMultiplier; // pegs price at DFT_PRICE * (priceMultiplier / 1000)
     uint256 public exponentialRetry; // exponentially increases burn on each successive attempt
-    uint256 public accDFTPerShare; 
+    uint256 public accDFTPerShare;
 
     modifier NoReentrant(address user) {
         require(
@@ -34,11 +35,17 @@ contract AnyStakeRegulator is AnyStakeBase, IRegulator {
         _;
     }
 
+    modifier activated() {
+        require(initialized, "Contract has not be initialized yet");
+        _;
+    }
+
     constructor(address router, address dft, address dftp) public AnyStakeBase(router, dft, dftp) {
         priceMultiplier = 2500; // 2.5x, min DFT fee/burn needed to generate 1 DFTP 
     }
 
     function initialize(address vault) external governanceLevel(2) {
+        initialized = true;
         Vault = vault;
     }
 
@@ -69,7 +76,7 @@ contract AnyStakeRegulator is AnyStakeBase, IRegulator {
 
     }
 
-    function claim() external override NoReentrant(msg.sender) {
+    function claim() external override activated NoReentrant(msg.sender) {
         _claim(msg.sender);
     }
 
@@ -89,7 +96,7 @@ contract AnyStakeRegulator is AnyStakeBase, IRegulator {
         emit Claim(user, 0);
     }
 
-    function deposit(uint256 amount) external override NoReentrant(msg.sender) {
+    function deposit(uint256 amount) external override activated NoReentrant(msg.sender) {
         _deposit(msg.sender, amount);
     }
 

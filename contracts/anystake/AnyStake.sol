@@ -37,6 +37,7 @@ contract AnyStake is AnyStakeBase, IAnyStake {
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
 
     address public Vault; //where rewards are stored for distribution
+    bool public initialized;
 
     PoolInfo[] public poolInfo; // array of AnyStake pools
     mapping(uint256 => mapping(address => UserInfo)) public userInfo; // mapping of (pid => (userAddress => userInfo))
@@ -75,63 +76,21 @@ contract AnyStake is AnyStakeBase, IAnyStake {
         _;
     }
 
+    modifier activated() {
+        require(initialized, "Contract has not be initialized yet");
+        _;
+    }
+
     constructor(address router, address dft, address dftp) public AnyStakeBase(router, dft, dftp) {
         stakingFee = 50; // 5%, base 100
     }
     
     // Initialize pools/rewards after the Vault has been setup
     function initialize(address _Vault) public governanceLevel(2) {
+        initialized = true;
         Vault = _Vault;
         contractStartBlock = block.number;
-        
-        setupPools();
     }
-    
-    // 4- create pools
-    function setupPools() internal {
-        //DFT-LP
-        //addPoolManual(DFTLP, address(0), 250);
-        
-        //DFTP-LP
-        //addPoolManual(DFTPLP, address(0), 250);
-        
-        //wBTC
-        addPool(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599, 0xBb2b8038a1640196FbE3e38816F3e67Cba72D940);
-        
-        //USDC
-        addPool(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, 0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc);
-
-        /*
-        //USDT
-        addPool(0xdAC17F958D2ee523a2206206994597C13D831ec7, 0x0d4a11d5EEaaC28EC3F61d100daF4d40471f1852,   true,  price ,  false);
-
-        //UNI
-        addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
-        
-        //YFI
-        addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
-        
-        //LINK
-        addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
-        
-        //MKR
-        addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
-        
-        //CEL
-        addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
-        
-        //SNX
-        addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
-        
-        //AAVE
-        addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
-        
-        //CORE
-        addPool(address _stakedToken, address _lpToken,   true,  price ,  false);
-        
-        */
-    }
-
 
     //==================================================================================================================================
     // POOL
@@ -178,12 +137,22 @@ contract AnyStake is AnyStakeBase, IAnyStake {
         ++epoch;
     }
 
-    function addPool(address token, address lpToken) public governanceLevel(2) {
-        _addPool(token, lpToken, 100);
+    function addPool(
+        address token, 
+        address lpToken, 
+        uint256 allocPoint
+    ) external governanceLevel(2) {
+        _addPool(token, lpToken, allocPoint);
     }
 
-    function addPoolManual(address token, address lpToken, uint256 allocPoint) public governanceLevel(2) {
-        _addPool(token, lpToken, allocPoint);
+    function addPoolBatch(
+        address[] calldata tokens,
+        address[] calldata lpTokens,
+        uint256[] calldata allocPoints
+    ) external governanceLevel(2) {
+        for (uint i = 0; i < tokens.length; i++) {
+            _addPool(tokens[i], lpTokens[i], allocPoints[i]);
+        }
     }
 
     // Add a new token pool. Can only be called by governors.
@@ -286,6 +255,20 @@ contract AnyStake is AnyStakeBase, IAnyStake {
         }
 
         DFTBalance = IERC20(DFT).balanceOf(address(this));
+    }
+
+    // Method to avoid underflow on token transfers
+    function safeTokenTransfer(address user, address token, uint256 amount) internal {
+        if (amount == 0) {
+            return;
+        }
+
+        uint256 tokenBalance = IERC20(token).balanceOf(address(this));
+        if (amount > tokenBalance) {
+            IERC20(token).safeTransfer(user, tokenBalance);
+        } else {
+            IERC20(token).safeTransfer(user, amount);
+        }
     }
     
     function updateRewards() internal {
@@ -445,7 +428,7 @@ contract AnyStake is AnyStakeBase, IAnyStake {
         require(_token != DFT, "Cannot withdraw DFT from AnyStake");
         require(!nonWithdrawableByAdmin[_token], "Cannot withdraw tokens that are staked in AnyStake");
 
-        IERC20(_token).transfer(_recipient, _amount); //use of the _ERC20 traditional transfer
+        IERC20(_token).transfer(_recipient, _amount); //use of the ERC20 traditional transfer
         return true;
     }
 }
