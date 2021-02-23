@@ -1,7 +1,3 @@
-/**
- *Submitted for verification at Etherscan.io on 2020-08-28
-*/
-
 // SPDX-License-Identifier: MIT
 
 /* Defiat 2021
