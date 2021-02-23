@@ -114,7 +114,7 @@ contract TokenTimelock {
     
     function extend(uint256 _newReleaseTime) public returns(bool){
         require(msg.sender == _beneficiary, "only the beneficiary can extend timelock");
-	require(_newReleaseTime > _releaseTime, "can only extend timeLock);
+	require(_newReleaseTime > _releaseTime, "can only extend timeLock");
         _releaseTime = _newReleaseTime;
         return true;
     }
